@@ -53,11 +53,39 @@ def google_people_api():
         })
     return data_to_create
 
+def create_message(sender, to, subject, message_text):
+    """Create a message for an email."""
+    message = MIMEMultipart()
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
+
+    msg = MIMEText(message_text)
+    message.attach(msg)
+
+    return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
+
+def send_message(service,user_id, message):
+    """Send an email message."""
+    try:
+        service = google_api(service_name=service)
+        sent_message = service.users().messages().send(userId=user_id, body=message).execute()
+        print('Message Id: %s' % sent_message['id'])
+        return sent_message
+    except Exception as e:
+        print('An error occurred: %s' % e)
+        return None
 
 
 def main():
     people =  google_people_api()
-    print(people)
+    sender = "pejilabs@gmail.com"
+    to = "zdeva804@gmail.com"
+    subject = "Test Email"
+    message_text = "This is a test email Awikwok using the Gmail API "
+    message = create_message(sender, to, subject, message_text)
+    send_message("gmail","me", message=message)
+    # print(people)
 
 if __name__ == '__main__':
     main()
