@@ -1,89 +1,66 @@
-import pygame
-import sys
-import random
+import datetime
+import xmlrpc.client
 
-# Initialize Pygame
-pygame.init()
+url = 'http://localhost:8069'
+db = 'wh'
+username = 'admin'
+password = 'admin'
 
-# Set up the screen
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Running Stick Man")
-
-# Set up colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-
-# Set up stick man parameters
-stick_man_x = 50
-stick_man_y = HEIGHT - 100
-stick_man_speed = 5
-
-# Set up obstacle parameters
-obstacle_width = 30
-obstacle_height = 60
-obstacle_speed = 5
-obstacles = []
-
-# Clock for controlling the frame rate
-clock = pygame.time.Clock()
-
-# Function to create a new obstacle
-def create_obstacle():
-
-    obstacle_x = range(1,800)
-    obstacle_y = range(1,800) - obstacle_height
-    obstacles.append(pygame.Rect(obstacle_x, obstacle_y, obstacle_width, obstacle_height))
-
-# Main game loop
-running = True
-while running:
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Move stick man
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_SPACE]:
-        stick_man_speed = 10
+def authenticate(url, db, username, password):
+    common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
+    uid = common.authenticate(db, username, password, {})
+    if uid:
+        print('Authenticated as', username)
     else:
-        stick_man_speed = 5
-    if keys[pygame.K_UP] and stick_man_y > 0:
-        stick_man_y -= stick_man_speed
-    if keys[pygame.K_DOWN] and stick_man_y < HEIGHT - 100:
-        stick_man_y += stick_man_speed
+        raise Exception('Authentication failed')
+    return uid
 
-    # Move obstacles
-    for obstacle in obstacles:
-        obstacle.x -= obstacle_speed
+def create_partner(url, db, uid, password):
+    print('aoikoawkowa')
+    models = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(url))
+    partner_id = models.execute_kw(db, uid, password, 'res.partner', 'search_read', [[['email', '=', 'william@gmail.comd']]], {'fields': ['id', 'name','email'], 'limit': 1})
+    print(partner_id)
+    if partner_id:
+        id_partner = partner_id[0].get('id')
+        name_partner = partner_id[0].get('name')
+        email_partner = partner_id[0].get('email')
+        print(partner_id[0].get('id'))
+    elif not partner_id:
+        partner_id = models.execute_kw(db, uid, password, 'res.partner', 'search_read', [[['email', '=', 'william@gmail.comd']]], {'fields': ['id', 'name','email'], 'limit': 1})
+        print("awlowkoaw")
+    exit()
+    time_now = datetime.datetime.now()
+    partner_data = {
+        'partner_id':id_partner,
+        'name': "TEST APPS",
+        'user_id': uid,
+        'team_id':1,
+        'company_id':1,
+        'email_from': email_partner,
+        # 'priority':3,
+        'description':"TEST",
+        'type':"opportunity",
+        'active': True,
+        # 'date_open': time_now,
+        # 'date_last_stage_update': time_now,
+        # 'create_date': time_now,
+        # 'write_date': time_now,
 
-    # Create new obstacles
-    if random.randint(0, 100) < 5:
-        create_obstacle()
+    }
+    
+    partner_id = models.execute_kw(db, uid, password, 'crm.lead', 'create', [partner_data])
+    print('Created partner with ID:', partner_id)
+    return partner_id
 
-    # Check for collisions with obstacles
-    for obstacle in obstacles:
-        if obstacle.colliderect(pygame.Rect(stick_man_x, stick_man_y, 20, 50)):
-            running = False
+# def create_contact(email):
+#     models.execute_kw(db, uid, password, 'crm.lead', 'create', [partner_data])
 
-    # Clear the screen
-    screen.fill(BLACK)
+def main():
+    try:
+        uid = authenticate(url, db, username, password)
+        create_partner(url, db, uid, password)
+    except Exception as e:
+        print("Error:", e)
 
-    # Draw stick man
-    pygame.draw.rect(screen, WHITE, (stick_man_x, stick_man_y, 20, 50))  # Body
-    pygame.draw.circle(screen, WHITE, (stick_man_x + 10, stick_man_y - 20), 10)  # Head
-
-    # Draw obstacles
-    for obstacle in obstacles:
-        pygame.draw.rect(screen, WHITE, obstacle)
-
-    # Update the display
-    pygame.display.flip()
-
-    # Cap the frame rate
-    clock.tick(60)
-
-# Quit Pygame
-pygame.quit()
-sys.exit()
+if __name__ == '__main__':
+    main()
